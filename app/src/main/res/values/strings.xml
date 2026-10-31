@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">fr3velora</string>
+    <string name="banner_listener">Akses notifikasi belum aktif. Aktifkan untuk Fr3velora agar pembayaran DANA Bisnis bisa diverifikasi otomatis.\n\nJika pilihannya abu-abu (Android 13+): buka Info aplikasi → menu ⋮ → Izinkan setelan terbatas, lalu ulangi.</string>
+    <string name="btn_enable">Aktifkan</string>
+    <string name="btn_app_info">Info aplikasi</string>
+    <string name="menu_settings">Pusat Kontrol</string>
+    <string name="menu_reload">Muat ulang</string>
+    <string name="menu_log">Log notifikasi</string>
+    <string name="menu_listener">Izin akses notifikasi</string>
+    <string name="menu_battery">Abaikan optimasi baterai</string>
+    <string name="menu_packages">Paket aplikasi DANA</string>
+    <string name="menu_server">Ganti URL server</string>
+    <string name="err_open_settings">Tidak bisa membuka pengaturan akses notifikasi</string>
+    <string name="battery_title">Agar tetap berjalan di latar belakang</string>
+    <string name="battery_msg">Izinkan Fr3velora mengabaikan optimasi baterai supaya pembaca notifikasi tidak dimatikan sistem.</string>
+    <string name="allow">Izinkan</string>
+    <string name="later">Nanti</string>
+    <string name="server_title">URL server</string>
+    <string name="server_msg">Alamat website payment gateway (harus https), contoh https://fr3velora.xyz</string>
+    <string name="err_https">URL harus diawali https://</string>
+    <string name="save">Simpan</string>
+    <string name="cancel">Batal</string>
+    <string name="packages_title">Paket aplikasi DANA</string>
+    <string name="packages_msg">Nama paket aplikasi yang notifikasinya dibaca, pisahkan dengan koma. Lihat paket yang benar lewat Log notifikasi → mode debug.</string>
+    <string name="downloading">Mengunduh %1$s</string>
+    <string name="saved_to_downloads">Tersimpan di Download: %1$s</string>
+    <string name="err_save">Gagal menyimpan file</string>
+    <string name="debug_switch">Mode debug: catat notifikasi semua aplikasi (tidak dikirim ke server)</string>
+    <string name="refresh">Segarkan</string>
+    <string name="clear">Hapus log</string>
+    <string name="log_empty">Belum ada aktivitas.</string>
+    <string name="menu_tts">Suara pembayaran (TTS)</string>
+    <string name="menu_popup">Pop-up pembayaran</string>
+    <string name="channel_payments">Pembayaran</string>
+    <string name="welcome_title">Selamat Datang di Platform Fr3velora</string>
+    <string name="welcome_dear">Yth. Bapak/Ibu %1$s,</string>
+    <string name="welcome_dear_generic">Yth. Bapak/Ibu,</string>
+    <string name="welcome_body">Terima kasih atas kepercayaan Anda menggunakan Fr3velora. Akun Anda telah berhasil terhubung dengan aplikasi ini.\n\nKami berharap seluruh aktivitas Anda berjalan dengan lancar. Selamat bekerja.</string>
+    <string name="welcome_start">Mulai</string>
+    <string name="welcome_speech">Selamat datang di platform Fr3velora%1$s. Terima kasih atas kepercayaan Anda. Selamat bekerja.</string>
+</resources>
