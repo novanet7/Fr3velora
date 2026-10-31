@@ -57,9 +57,11 @@ object Announcer {
             app, 0, Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        // Small icon = logo (status bar); large icon dihapus agar foto kanan tidak muncul
+        val logoBmp = BitmapFactory.decodeResource(app.resources, R.drawable.ic_launcher_art)
         val n = NotificationCompat.Builder(app, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_notify)
-            .setLargeIcon(BitmapFactory.decodeResource(app.resources, R.drawable.logo))
+            // setLargeIcon sengaja tidak dipanggil → foto kanan hilang
             .setColor(0xFF1E90FF.toInt())
             .setContentTitle(title)
             .setContentText(body)
