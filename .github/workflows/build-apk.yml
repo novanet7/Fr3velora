@@ -2,6 +2,9 @@ name: Build APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['*.zip']
 
 permissions:
   contents: write
@@ -11,6 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      # Jika ada file .zip di akar repo: ekstrak, simpan ke repo, lalu lanjut build.
+      # Jika tidak ada: langsung build dari isi repo.
+      - name: Ekstrak zip (jika ada)
+        run: |
+          set -e
+          Z=$(ls *.zip 2>/dev/null | head -n1 || true)
+          if [ -z "$Z" ]; then
+            echo "Tidak ada zip, build dari isi repo"
+            exit 0
+          fi
+          unzip -q -o "$Z" -d _x
+          rm "$Z"
+          SRC=_x/android-app; [ -d "$SRC" ] || SRC=_x
+          rm -rf "$SRC/.github"
+          rm -rf app/src
+          cp -a "$SRC"/. .
+          rm -rf _x
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "Update dari zip" || true
+          git push
 
       - uses: actions/setup-java@v4
         with:
