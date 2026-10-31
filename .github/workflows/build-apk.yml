@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Ekstrak zip (jika ada)
         run: |
@@ -41,7 +41,7 @@ jobs:
           git commit -m "Update dari zip" || true
           git push
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
@@ -53,9 +53,14 @@ jobs:
           yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses > /dev/null || true
           ls "$SDK/licenses"
 
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: 8.14.3
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Pastikan gradlew ada & executable
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
+          chmod +x gradlew
 
       - name: Siapkan keystore (jika ada)
         env:
@@ -71,9 +76,9 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle assembleRelease -PVERSION_CODE=${{ github.run_number }}00 -PVERSION_NAME=2.0.${{ github.run_number }}
+        run: ./gradlew assembleRelease -PVERSION_CODE=${{ github.run_number }}00 -PVERSION_NAME=2.0.${{ github.run_number }}
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: fr3velora-apk
           path: app/build/outputs/apk/release/*.apk
