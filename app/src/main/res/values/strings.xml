@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">fr3velora</string>
     <string name="banner_listener">Akses notifikasi belum aktif. Aktifkan untuk Fr3velora agar pembayaran DANA Bisnis bisa diverifikasi otomatis.\n\nJika pilihannya abu-abu (Android 13+): buka Info aplikasi → menu ⋮ → Izinkan setelan terbatas, lalu ulangi.</string>
+    <string name="listener_title">Akses notifikasi belum aktif</string>
     <string name="btn_enable">Aktifkan</string>
     <string name="btn_app_info">Info aplikasi</string>
     <string name="menu_settings">Pusat Kontrol</string>

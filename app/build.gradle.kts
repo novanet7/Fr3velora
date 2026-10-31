@@ -1,23 +1,10 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-// URL server default: -PBASE_URL=..., env BASE_URL, atau local.properties (BASE_URL=...)
-// Kalau kosong, aplikasi akan menanyakan URL saat pertama dibuka.
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}
-val baseUrl: String = (findProperty("BASE_URL") as String?)
-    ?: System.getenv("BASE_URL")
-    ?: localProps.getProperty("BASE_URL")
-    ?: ""
-
-// Nama file APK: fr3velora-release.apk
-base.archivesName.set("fr3velora")
+// Alamat server dipatenkan di dalam aplikasi (tidak bisa diubah pengguna).
+val baseUrl = "https://fr3velora.xyz"
 
 android {
     namespace = "fr3velora.xyz"

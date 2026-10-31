@@ -11,7 +11,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -79,7 +78,6 @@ class SettingsActivity : AppCompatActivity() {
         statusSection()
         sourceSection()
         alertSection()
-        serverSection()
         diagnosticSection()
         footer()
     }
@@ -119,6 +117,11 @@ class SettingsActivity : AppCompatActivity() {
                 try { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
                 catch (_: Exception) { Toast.makeText(this, R.string.err_open_settings, Toast.LENGTH_LONG).show() }
             })
+        if (!listenerOn) {
+            statusRow(card, "Setelan terbatas",
+                "Jika tombol izin abu-abu: Info aplikasi → ⋮ → Izinkan setelan terbatas",
+                "ANDROID 13+", WARN, "Info aplikasi" to { openAppInfo() })
+        }
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         val batteryOk = pm.isIgnoringBatteryOptimizations(packageName)
         statusRow(card, "Optimasi baterai", "Agar tidak dimatikan sistem di latar belakang",
@@ -220,23 +223,6 @@ class SettingsActivity : AppCompatActivity() {
         content.addView(card, lp(bottom = 20))
     }
 
-    private fun serverSection() {
-        section("Server")
-        val card = card()
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-        }
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        col.addView(text("URL website", 14f, T1, bold = true))
-        col.addView(text(Prefs.baseUrl(this).ifBlank { "(belum diatur)" }, 12f, T2, mono = true))
-        row.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(linkButton("Ubah") { askServer() })
-        card.addView(row)
-        content.addView(card, lp(bottom = 20))
-    }
-
     private fun diagnosticSection() {
         section("Diagnostik")
         val card = card()
@@ -263,6 +249,10 @@ class SettingsActivity : AppCompatActivity() {
 
     // ── Aksi ──
 
+    private fun openAppInfo() {
+        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+    }
+
     @SuppressLint("BatteryLife")
     private fun requestBattery() {
         try {
@@ -286,29 +276,6 @@ class SettingsActivity : AppCompatActivity() {
                     Prefs.setPackagesRaw(this, next.joinToString(","))
                     build()
                 } else Toast.makeText(this, "Nama paket tidak valid", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun askServer() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_TEXT_VARIATION_URI
-            setText(Prefs.baseUrl(this@SettingsActivity).ifBlank { "https://" })
-            setSelection(text.length)
-        }
-        AlertDialog.Builder(this)
-            .setIcon(R.drawable.logo)
-            .setTitle(R.string.server_title)
-            .setMessage(R.string.server_msg)
-            .setView(input)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val v = input.text.toString().trim().trimEnd('/')
-                if (v.startsWith("https://") && v.length > 10) {
-                    Prefs.setBaseUrl(this, v)
-                    Prefs.setDeviceKey(this, null) // server baru → ambil ulang setelah login
-                    build()
-                } else Toast.makeText(this, R.string.err_https, Toast.LENGTH_LONG).show()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

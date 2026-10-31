@@ -45,8 +45,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var swipe: SwipeRefreshLayout
-    private lateinit var banner: View
-    private lateinit var bannerText: TextView
+    private var listenerPrompted = false
 
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var lastKeyFetch = 0L
@@ -67,15 +66,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         webView = findViewById(R.id.webView)
         swipe = findViewById(R.id.swipe)
-        banner = findViewById(R.id.banner)
-        bannerText = findViewById(R.id.bannerText)
-
-        findViewById<Button>(R.id.btnEnable).setOnClickListener { openListenerSettings() }
-        findViewById<Button>(R.id.btnAppInfo).setOnClickListener {
-            startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-            )
-        }
 
         webView.setBackgroundColor(0xFF0A0D13.toInt())
         webView.settings.apply {
@@ -118,7 +108,6 @@ class MainActivity : AppCompatActivity() {
         } else if (!handleIntent(intent)) {
             loadHome()
         }
-        if (base.isBlank()) askBaseUrl(firstRun = true)
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
@@ -138,7 +127,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (base.isNotBlank() && loadedBase.isNotBlank() && base != loadedBase) loadHome()
-        updateBanner()
+        promptListenerOnce()
         maybePromptBattery()
         Dispatcher.heartbeat(this)
         Dispatcher.flushAsync(this)
@@ -277,13 +266,20 @@ class MainActivity : AppCompatActivity() {
     private fun listenerEnabled(): Boolean =
         NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
 
-    private fun updateBanner() {
-        if (listenerEnabled()) {
-            banner.visibility = View.GONE
-        } else {
-            bannerText.text = getString(R.string.banner_listener)
-            banner.visibility = View.VISIBLE
-        }
+    /** Tanpa banner: jika akses notifikasi belum aktif, tanyakan sekali per sesi lalu arahkan ke Pusat Kontrol. */
+    private fun promptListenerOnce() {
+        if (listenerPrompted || listenerEnabled() || isFinishing || isDestroyed) return
+        listenerPrompted = true
+        AlertDialog.Builder(this)
+            .setIcon(R.drawable.logo)
+            .setTitle(R.string.listener_title)
+            .setMessage(R.string.banner_listener)
+            .setPositiveButton(R.string.btn_enable) { _, _ -> openListenerSettings() }
+            .setNeutralButton(R.string.btn_app_info) { _, _ ->
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+            }
+            .setNegativeButton(R.string.later, null)
+            .show()
     }
 
     private fun openListenerSettings() {
@@ -332,36 +328,9 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_settings -> startActivity(Intent(this, SettingsActivity::class.java))
-            R.id.menu_reload -> webView.reload()
-            R.id.menu_log -> startActivity(Intent(this, LogActivity::class.java))
             else -> return super.onOptionsItemSelected(item)
         }
         return true
-    }
-
-    private fun askBaseUrl(firstRun: Boolean) {
-        val input = EditText(this).apply {
-            setText(base.ifBlank { "https://" })
-            setSelection(text.length)
-        }
-        val dlg = AlertDialog.Builder(this)
-            .setTitle(R.string.server_title)
-            .setMessage(R.string.server_msg)
-            .setView(input)
-            .setCancelable(!firstRun)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val v = input.text.toString().trim().trimEnd('/')
-                if (v.startsWith("https://") && v.length > 10) {
-                    Prefs.setBaseUrl(this, v)
-                    Prefs.setDeviceKey(this, null) // akun/server baru → ambil ulang setelah login
-                    loadHome()
-                } else {
-                    Toast.makeText(this, R.string.err_https, Toast.LENGTH_LONG).show()
-                    askBaseUrl(firstRun)
-                }
-            }
-        if (!firstRun) dlg.setNegativeButton(R.string.cancel, null)
-        dlg.show()
     }
 
     private fun askPackages() {
