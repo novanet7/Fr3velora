@@ -4,7 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['*.zip']
+    paths-ignore:
+      - '**.md'
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
 
 permissions:
   contents: write
