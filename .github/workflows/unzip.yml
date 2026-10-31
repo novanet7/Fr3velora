@@ -1,1 +1,26 @@
-
+name: Ekstrak zip
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ekstrak
+        run: |
+          Z=$(ls *.zip | head -n1)
+          unzip -q -o "$Z" -d _x
+          rm "$Z"
+          SRC=_x/android-app; [ -d "$SRC" ] || SRC=_x
+          rm -rf "$SRC/.github"
+          cp -a "$SRC"/. .
+          rm -rf _x
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "Update dari zip" || exit 0
+          git push
