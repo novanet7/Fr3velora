@@ -7,14 +7,17 @@ jobs:
   unzip:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Ekstrak
         run: |
-          Z=$(ls *.zip | head -n1)
+          set -e
+          Z=$(ls *.zip 2>/dev/null | head -n1)
+          [ -n "$Z" ] || { echo "Tidak ada file .zip di akar repo"; exit 1; }
           unzip -q -o "$Z" -d _x
           rm "$Z"
           SRC=_x/android-app; [ -d "$SRC" ] || SRC=_x
           rm -rf "$SRC/.github"
+          rm -rf app/src
           cp -a "$SRC"/. .
           rm -rf _x
       - name: Commit
