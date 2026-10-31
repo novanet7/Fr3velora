@@ -15,7 +15,8 @@ import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Base64
-import android.view.MotionEvent
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
@@ -28,9 +29,9 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.PopupMenu
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -44,7 +45,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var swipe: SwipeRefreshLayout
-    private lateinit var fabMenu: ImageButton
     private var listenerPrompted = false
 
     private var fileCallback: ValueCallback<Array<Uri>>? = null
@@ -60,16 +60,13 @@ class MainActivity : AppCompatActivity() {
 
     private val base: String get() = Prefs.baseUrl(this)
 
-    @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface", "ClickableViewAccessibility")
+    @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         webView = findViewById(R.id.webView)
-        swipe   = findViewById(R.id.swipe)
-        fabMenu = findViewById(R.id.fabMenu)
+        swipe = findViewById(R.id.swipe)
 
-        // ── WebView ──
         webView.setBackgroundColor(0xFF0A0D13.toInt())
         webView.settings.apply {
             javaScriptEnabled = true
@@ -90,8 +87,13 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
-                return try { fileChooser.launch(params.createIntent()); true }
-                catch (_: Exception) { fileCallback = null; false }
+                return try {
+                    fileChooser.launch(params.createIntent())
+                    true
+                } catch (_: Exception) {
+                    fileCallback = null
+                    false
+                }
             }
         }
         webView.setDownloadListener(DownloadListener { url, _, contentDisposition, mime, _ ->
@@ -101,90 +103,62 @@ class MainActivity : AppCompatActivity() {
         swipe.setOnRefreshListener { webView.reload() }
         swipe.setOnChildScrollUpCallback { _, _ -> webView.scrollY > 0 }
 
-        if (savedInstanceState != null) webView.restoreState(savedInstanceState)
-        else if (!handleIntent(intent)) loadHome()
-
+        if (savedInstanceState != null) {
+            webView.restoreState(savedInstanceState)
+        } else if (!handleIntent(intent)) {
+            loadHome()
+        }
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
-
-        // ── FAB draggable + klik tampilkan menu ──
-        setupFab()
     }
 
-    // ── FAB: drag bebas + klik buka popup menu ──
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupFab() {
-        var downX = 0f; var downY = 0f
-        var lastX = 0f; var lastY = 0f
-        var moved = false
-
-        fabMenu.setOnTouchListener { v, event ->
-            val parent = v.parent as View
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = event.rawX; downY = event.rawY
-                    lastX = v.x;       lastY = v.y
-                    moved = false
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.rawX - downX
-                    val dy = event.rawY - downY
-                    if (!moved && (Math.abs(dx) < 8 && Math.abs(dy) < 8)) return@setOnTouchListener true
-                    moved = true
-                    val newX = (lastX + dx).coerceIn(0f, (parent.width  - v.width ).toFloat())
-                    val newY = (lastY + dy).coerceIn(0f, (parent.height - v.height).toFloat())
-                    v.x = newX; v.y = newY
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (!moved) showFabMenu(v)
-                    true
-                }
-                else -> false
-            }
-        }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
     }
 
-    private fun showFabMenu(anchor: View) {
-        val popup = PopupMenu(this, anchor)
-        popup.menu.apply {
-            add(0, R.id.menu_settings, 0, R.string.menu_settings)
-            add(0, 100, 1, R.string.menu_reload)
-            add(0, 101, 2, R.string.menu_log)
-            add(0, 102, 3, R.string.menu_listener)
-            add(0, 103, 4, R.string.menu_battery)
-            add(0, 104, 5, R.string.menu_packages)
-            add(0, 105, 6, R.string.menu_server)
-            add(0, 106, 7, R.string.menu_tts)
-            add(0, 107, 8, R.string.menu_popup)
-        }
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.menu_settings -> startActivity(Intent(this, SettingsActivity::class.java))
-                100 -> webView.reload()
-                101 -> startActivity(Intent(this, LogActivity::class.java))
-                102 -> openListenerSettings()
-                103 -> requestBatteryExemption()
-                104 -> askPackages()
-                105 -> askServerUrl()
-                106 -> startActivity(Intent(this, SettingsActivity::class.java))
-                107 -> startActivity(Intent(this, SettingsActivity::class.java))
-            }
-            true
-        }
-        popup.show()
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        webView.saveState(outState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (base.isNotBlank() && loadedBase.isNotBlank() && base != loadedBase) loadHome()
+        promptListenerOnce()
+        maybePromptBattery()
+        Dispatcher.heartbeat(this)
+        Dispatcher.flushAsync(this)
+    }
+
+    override fun onPause() {
+        CookieManager.getInstance().flush()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        fileCallback?.onReceiveValue(null)
+        fileCallback = null
+        super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
 
     // ── Navigasi ──
 
     private fun loadHome() {
-        val b = base; if (b.isBlank()) return
-        loadedBase = b; webView.loadUrl("$b/")
+        val b = base
+        if (b.isBlank()) return
+        loadedBase = b
+        webView.loadUrl("$b/")
     }
 
+    /** Kembali dari login Google: fr3velora://auth?code=... → tukar jadi sesi di WebView. */
     private fun handleIntent(i: Intent?): Boolean {
         val data = i?.data ?: return false
         if (data.scheme != "fr3velora" || data.host != "auth") return false
@@ -204,13 +178,19 @@ class MainActivity : AppCompatActivity() {
             val uri = request.url
             val baseHost = Uri.parse(base).host
             if (uri.host != null && uri.host == baseHost) {
+                // Google memblokir login OAuth di dalam WebView → buka lewat Custom Tab
                 if (uri.path?.startsWith("/api/auth/google") == true && uri.getQueryParameter("app") != "1") {
-                    openGoogleLogin(); return true
+                    openGoogleLogin()
+                    return true
                 }
                 return false
             }
-            return try { startActivity(Intent(Intent.ACTION_VIEW, uri)); true }
-            catch (_: Exception) { true }
+            return try {
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+                true
+            } catch (_: Exception) {
+                true
+            }
         }
 
         override fun onPageFinished(view: WebView, url: String?) {
@@ -232,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── Device key ──
+    // ── Device key: diambil dari sesi login WebView, dipakai pembaca notifikasi ──
 
     private fun fetchDeviceKey() {
         val now = System.currentTimeMillis()
@@ -249,7 +229,8 @@ class MainActivity : AppCompatActivity() {
                         Prefs.setDeviceKey(this, key)
                         Prefs.log(this, "Akun terhubung ke app")
                     }
-                    Dispatcher.heartbeat(this); Dispatcher.flushAsync(this)
+                    Dispatcher.heartbeat(this)
+                    Dispatcher.flushAsync(this)
                     if (key.isNotBlank() && Prefs.welcomedKey(this) != key) {
                         val name = try {
                             val me = Api.request("GET", b, "/api/auth/me", cookie = cookie)
@@ -258,32 +239,34 @@ class MainActivity : AppCompatActivity() {
                         runOnUiThread { showWelcome(key, name) }
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 
-    // ── Sambutan ──
+    // ── Sambutan pertama kali login ──
 
     private fun showWelcome(key: String, name: String) {
         if (isFinishing || isDestroyed) return
         Prefs.setWelcomedKey(this, key)
-        val sapaan = if (name.isNotBlank()) getString(R.string.welcome_dear, name)
-                     else getString(R.string.welcome_dear_generic)
+        val sapaan = if (name.isNotBlank()) getString(R.string.welcome_dear, name) else getString(R.string.welcome_dear_generic)
         AlertDialog.Builder(this)
             .setIcon(R.drawable.logo)
             .setTitle(R.string.welcome_title)
             .setMessage(sapaan + "\n\n" + getString(R.string.welcome_body))
             .setPositiveButton(R.string.welcome_start, null)
-            .setCancelable(false).show()
+            .setCancelable(false)
+            .show()
         val who = if (name.isNotBlank()) ", $name" else ""
         Announcer.speakOnly(this, getString(R.string.welcome_speech, who))
     }
 
-    // ── Izin notifikasi ──
+    // ── Izin pembaca notifikasi ──
 
-    private fun listenerEnabled() =
+    private fun listenerEnabled(): Boolean =
         NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
 
+    /** Tanpa banner: jika akses notifikasi belum aktif, tanyakan sekali per sesi lalu arahkan ke Pusat Kontrol. */
     private fun promptListenerOnce() {
         if (listenerPrompted || listenerEnabled() || isFinishing || isDestroyed) return
         listenerPrompted = true
@@ -293,15 +276,16 @@ class MainActivity : AppCompatActivity() {
             .setMessage(R.string.banner_listener)
             .setPositiveButton(R.string.btn_enable) { _, _ -> openListenerSettings() }
             .setNeutralButton(R.string.btn_app_info) { _, _ ->
-                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:$packageName")))
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
             }
-            .setNegativeButton(R.string.later, null).show()
+            .setNegativeButton(R.string.later, null)
+            .show()
     }
 
     private fun openListenerSettings() {
-        try { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-        catch (_: Exception) {
+        try {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        } catch (_: Exception) {
             Toast.makeText(this, R.string.err_open_settings, Toast.LENGTH_LONG).show()
         }
     }
@@ -312,78 +296,57 @@ class MainActivity : AppCompatActivity() {
         if (pm.isIgnoringBatteryOptimizations(packageName)) return
         Prefs.setBatteryPromptShown(this)
         AlertDialog.Builder(this)
-            .setTitle(R.string.battery_title).setMessage(R.string.battery_msg)
+            .setTitle(R.string.battery_title)
+            .setMessage(R.string.battery_msg)
             .setPositiveButton(R.string.allow) { _, _ -> requestBatteryExemption() }
-            .setNegativeButton(R.string.later, null).show()
+            .setNegativeButton(R.string.later, null)
+            .show()
     }
 
     @SuppressLint("BatteryLife")
     private fun requestBatteryExemption() {
         try {
-            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                Uri.parse("package:$packageName")))
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
+            )
         } catch (_: Exception) {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }
     }
 
-    // ── Dialog server URL ──
+    // ── Menu ──
 
-    private fun askServerUrl() {
-        val input = EditText(this).apply {
-            setText(Prefs.baseUrl(this@MainActivity))
-            hint = "https://example.com"
-        }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.server_title).setMessage(R.string.server_msg).setView(input)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val url = input.text.toString().trimEnd('/')
-                if (!url.startsWith("https://")) {
-                    Toast.makeText(this, R.string.err_https, Toast.LENGTH_SHORT).show()
-                } else { Prefs.setBaseUrl(this, url); loadHome() }
-            }
-            .setNegativeButton(R.string.cancel, null).show()
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
     }
 
-    // ── Dialog paket DANA ──
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_settings -> startActivity(Intent(this, SettingsActivity::class.java))
+            else -> return super.onOptionsItemSelected(item)
+        }
+        return true
+    }
 
     private fun askPackages() {
         val input = EditText(this).apply { setText(Prefs.packagesRaw(this@MainActivity)) }
         AlertDialog.Builder(this)
-            .setTitle(R.string.packages_title).setMessage(R.string.packages_msg).setView(input)
+            .setTitle(R.string.packages_title)
+            .setMessage(R.string.packages_msg)
+            .setView(input)
             .setPositiveButton(R.string.save) { _, _ ->
                 Prefs.setPackagesRaw(this, input.text.toString())
             }
-            .setNegativeButton(R.string.cancel, null).show()
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
-    // ── Lifecycle ──
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent); setIntent(intent); handleIntent(intent)
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState); webView.saveState(outState)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (base.isNotBlank() && loadedBase.isNotBlank() && base != loadedBase) loadHome()
-        promptListenerOnce(); maybePromptBattery()
-        Dispatcher.heartbeat(this); Dispatcher.flushAsync(this)
-    }
-
-    override fun onPause() { CookieManager.getInstance().flush(); super.onPause() }
-
-    override fun onDestroy() { fileCallback?.onReceiveValue(null); fileCallback = null; super.onDestroy() }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
-    }
-
-    // ── Download ──
+    // ── Download (QR dll.) ──
 
     private fun handleDownload(url: String, contentDisposition: String?, mime: String?) {
         val name = URLUtil.guessFileName(url, contentDisposition, mime)
@@ -432,12 +395,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Jembatan JS → native. Hanya memuat halaman server sendiri; halaman luar dibuka di browser. */
     private inner class Bridge {
-        @JavascriptInterface fun isApp(): Boolean = true
-        @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
-        @JavascriptInterface fun isListenerEnabled(): Boolean = listenerEnabled()
-        @JavascriptInterface fun openNotificationSettings() { runOnUiThread { openListenerSettings() } }
-        @JavascriptInterface fun saveBase64(name: String, mime: String, b64: String) {
+        @JavascriptInterface
+        fun isApp(): Boolean = true
+
+        @JavascriptInterface
+        fun appVersion(): String = BuildConfig.VERSION_NAME
+
+        @JavascriptInterface
+        fun isListenerEnabled(): Boolean = listenerEnabled()
+
+        @JavascriptInterface
+        fun openNotificationSettings() {
+            runOnUiThread { openListenerSettings() }
+        }
+
+        @JavascriptInterface
+        fun saveBase64(name: String, mime: String, b64: String) {
             if (b64.length > 20_000_000) return
             val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100).ifBlank { "download" }
             saveBytes(safe, mime, Base64.decode(b64, Base64.DEFAULT))
