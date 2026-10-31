@@ -15,8 +15,8 @@ android {
         applicationId = "com.aistudio.danalistener.tnlahb"
         minSdk = 29
         targetSdk = 35
-        versionCode = (findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
-        versionName = (findProperty("VERSION_NAME") as String?) ?: "1.0.0"
+        versionCode = (findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 100
+        versionName = (findProperty("VERSION_NAME") as String?) ?: "2.0.0"
         buildConfigField("String", "DEFAULT_BASE_URL", "\"${baseUrl.trim().trimEnd('/')}\"")
         // Paket aplikasi DANA yang notifikasinya dibaca (pisahkan dengan koma).
         // Cek paket yang benar lewat menu "Log notifikasi" (mode debug).

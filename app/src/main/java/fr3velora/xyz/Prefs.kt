@@ -15,14 +15,8 @@ object Prefs {
     private fun sp(c: Context) =
         c.applicationContext.getSharedPreferences("fr3velora", Context.MODE_PRIVATE)
 
-    /** Alamat server — bisa diubah user lewat dialog, fallback ke DEFAULT_BASE_URL dari build. */
-    fun baseUrl(c: Context): String =
-        sp(c).getString("base_url", null)?.takeIf { it.isNotBlank() }
-            ?: BuildConfig.DEFAULT_BASE_URL
-
-    fun setBaseUrl(c: Context, v: String) {
-        sp(c).edit().putString("base_url", v).apply()
-    }
+    /** Alamat server tetap (ditanam di build); nilai lama di penyimpanan diabaikan. */
+    fun baseUrl(@Suppress("UNUSED_PARAMETER") c: Context): String = BuildConfig.DEFAULT_BASE_URL
 
     fun deviceKey(c: Context): String? = sp(c).getString("device_key", null)?.takeIf { it.isNotBlank() }
 
