@@ -20,8 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Jika ada file .zip di akar repo: ekstrak, simpan ke repo, lalu lanjut build.
-      # Jika tidak ada: langsung build dari isi repo.
       - name: Ekstrak zip (jika ada)
         run: |
           set -e
@@ -48,7 +46,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      - name: Terima lisensi Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses > /dev/null || true
+          ls "$SDK/licenses"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
